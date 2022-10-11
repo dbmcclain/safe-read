@@ -109,9 +109,9 @@
 
 (defun test-6 ()
   (with-input-from-string (stream "(first second third)")
-    (assert (equal '(first second third) (safe-read stream '(:common-lisp)))))
+    (assert (equal '(first second third) (safe-read stream '(:common-lisp) nil))))
   (with-input-from-string (stream "(foo bar baz)")
-    (loop for token in (safe-read stream '(:common-lisp))
+    (loop for token in (safe-read stream '(:common-lisp) nil)
        for symbol in '(foo bar baz)
        for string in '("FOO" "BAR" "BAZ")
        do 
