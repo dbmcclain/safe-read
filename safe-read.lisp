@@ -79,6 +79,9 @@
 
 ;; Main exported function
 (defun safe-read (&optional (stream *standard-input*) use-list)
+  (safe-read-method stream use-list))
+
+(defmethod safe-read-method ((stream stream) use-list)
   (let ((buffer (buffer-of stream)))
     (handler-case
         (if (string= "" buffer)
@@ -91,6 +94,35 @@
       (error (error)
         (setf (buffer-of stream) "")
         (error error)))))
+
+(defmethod safe-read-method ((stream string) use-list)
+  (safe-read-from-string stream use-list))
+
+;; Handler-case and macro-wrapper for safe string reading
+(defmacro safe-read-string-handler-case (&body body)
+  `(with-temp-package ,@(if (eq (first body) :use-list)
+                            (prog1 (list :use-list (second body))
+                              (setf body (cddr body))))
+     (handler-case
+         (let* ((*readtable* %safe-readtable%))
+           (values
+            (progn
+              ,@body)))
+       (error (e)
+         (values nil e)))
+     ))
+
+(defun safe-read-from-string (stream use-list)
+  (if (> (length stream) *max-input-size*)
+      (values nil (make-condition 'input-size-exceeded))
+    ;; else
+    (let ((trimmed (trim-leading-whitespace stream)))
+         (if (char= (char trimmed 0) #\( )
+             (safe-read-string-handler-case :use-list use-list
+               (read-from-string trimmed))
+            ;; else
+            (values nil (make-condition 'malformed-input)))
+         )))
 
 ;; Handler-case and macro-wrapper for safe reading
 (defmacro safe-read-handler-case (&body body)
